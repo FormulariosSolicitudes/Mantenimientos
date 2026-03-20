@@ -26,7 +26,7 @@ passport.deserializeUser((obj, done) => done(null, obj));
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "/auth/google/callback"
+    callbackURL: "https://mantenimientos-jzmo.onrender.com/auth/google/callback"
 },
     (accessToken, refreshToken, profile, done) => {
         return done(null, { profile, accessToken });
