@@ -115,42 +115,50 @@ app.post("/send", async (req, res) => {
         const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
 
         const mensaje = [
-            `From: ${req.user.profile.emails[0].value}`,
-            `To: formulariossolicitudes@gmail.com`,
-            `Subject: Nueva solicitud`,
-            `Content-Type: text/plain; charset="UTF-8"`,
+                `From: ${req.user.profile.emails[0].value}`,
+                `To: formulariossolicitudes@gmail.com`,
+                `Subject: Mantenimiento`,
+                `Content-Type: text/plain; charset="UTF-8"`,
 
-            ``,
+                `====================================================`,
+                `            📩 NUEVA SOLICITUD DE MANTENIMIENTO`,
+                `====================================================`,
 
-            `📌 DATOS PERSONALES`,
-            `Cédula: ${data.cedula}`,
-            `Nombre: ${data.nombre}`,
-            `Correo: ${data.correo}`,
-            `Celular: ${data.celular}`,
+                `📌 DATOS PERSONALES`,
+                `----------------------------------------------------`,
+                `Cédula     : ${data.cedula}`,
+                `Nombre     : ${data.nombre}`,
+                `Correo     : ${data.correo}`,
+                `Celular    : ${data.celular}`,
 
-            ``,
+                ``,
+                `📍 PUNTO DE VENTA`,
+                `----------------------------------------------------`,
+                `Código PV  : ${data.codigo_pv}`,
+                `Nombre PV  : ${data.nombre_pv}`,
 
-            `📍 PUNTO DE VENTA`,
-            `Código: ${data.codigo_pv}`,
-            `Nombre PV: ${data.nombre_pv}`,
+                ``,
+                `🛠 TIPO DE SOLICITUD`,
+                `----------------------------------------------------`,
+                `Locativo   : ${data.locativo ? "Sí" : "No"}`,
+                `Mobiliario : ${data.mobiliario ? "Sí" : "No"}`,
 
-            ``,
+                ``,
+                `🔧 DETALLES`,
+                `----------------------------------------------------`,
+                `Locativo   : ${data.locativo_opciones || "N/A"}`,
+                `Mobiliario : ${data.mobiliario_opciones || "N/A"}`,
 
-            `🛠 TIPO`,
-            `Locativo: ${data.locativo ? "Sí" : "No"}`,
-            `Mobiliario: ${data.mobiliario ? "Sí" : "No"}`,
+                ``,
+                `📝 DESCRIPCIÓN`,
+                `----------------------------------------------------`,
+                `${data.descripcion}`,
 
-            ``,
-
-            `🔧 DETALLES`,
-            `Locativo: ${data.locativo_opciones}`,
-            `Mobiliario: ${data.mobiliario_opciones}`,
-
-            ``,
-
-            `📝 DESCRIPCIÓN`,
-            `${data.descripcion}`
-        ].join("\n");
+                ``,
+                `====================================================`,
+                `Sistema automático de solicitudes`,
+                `====================================================`
+                ].join("\n");
 
         const encodedMessage = Buffer.from(mensaje)
             .toString("base64")
