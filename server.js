@@ -97,8 +97,7 @@ app.post("/send", async (req, res) => {
         return res.status(401).send("No hay refresh token. Vuelve a iniciar sesión con Google.");
     }
 
-    const data = req.body;
-
+    // Verificar si el refreshToken es válido antes de continuar
     try {
         const oAuth2Client = new google.auth.OAuth2(
             process.env.GOOGLE_CLIENT_ID,
@@ -110,8 +109,13 @@ app.post("/send", async (req, res) => {
             refresh_token: refreshToken
         });
 
+        // Intentar refrescar el token
+        await oAuth2Client.getAccessToken(); // Esto debería actualizar el token automáticamente
+
         const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
 
+        // Aquí sigues con el envío del correo
+        const data = req.body;
         const mensaje = [
             `From: ${req.user.profile.emails[0].value}`,
             `To: mantenimiento@record.com.co`,
@@ -120,7 +124,6 @@ app.post("/send", async (req, res) => {
             ``,
             `Cédula: ${data.cedula}`,
             `Nombre: ${data.nombre}`,
-            `Correo: ${data.correo}`,
             `Celular: ${data.celular}`,
             `Código PV: ${data.codigo_pv}`,
             `Nombre PV: ${data.nombre_pv}`,
