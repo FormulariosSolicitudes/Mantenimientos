@@ -114,7 +114,7 @@ app.post("/send", async (req, res) => {
 
         const mensaje = [
             `From: ${req.user.profile.emails[0].value}`,
-            `To: formulariossolicitudes@gmail.com`,
+            `To: mantenimiento@record.com.co`,
             `Subject: Mantenimiento`,
             `Content-Type: text/plain; charset="UTF-8"`,
 
@@ -126,8 +126,8 @@ app.post("/send", async (req, res) => {
             `Código PV: ${data.codigo_pv}`,
             `Nombre PV: ${data.nombre_pv}`,
             `Locativo: ${data.locativo_opciones || "N/A"}`,
-            `Mobiliario: ${data.mobiliario_opciones || "N/A"}`,
-            `Descripción: ${data.descripcion}`
+            `Mobiliario: ${data.mobiliario_opciones || "."}`,
+            `Descripción del caso: ${data.descripcion}`
         ].join("\n");
 
         const encodedMessage = Buffer.from(mensaje)
