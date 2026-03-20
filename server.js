@@ -2,7 +2,6 @@ const express = require("express");
 const session = require("express-session");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
-const nodemailer = require("nodemailer");
 const { google } = require("googleapis");
 require("dotenv").config();
 
@@ -37,6 +36,9 @@ passport.use(new GoogleStrategy({
     callbackURL: "https://mantenimientos-jzmo.onrender.com/auth/google/callback"
 },
     (accessToken, refreshToken, profile, done) => {
+
+        console.log("👤 Usuario logueado:", profile.emails[0].value);
+
         return done(null, {
             profile,
             refreshToken
@@ -60,7 +62,7 @@ app.get("/auth/google/callback",
     (req, res) => res.redirect("/")
 );
 
-// 📩 ENVÍO DE CORREO
+// 📩 ENVÍO DE CORREO CON GMAIL API
 app.post("/send", async (req, res) => {
 
     if (!req.user) {
@@ -70,7 +72,7 @@ app.post("/send", async (req, res) => {
     const data = req.body;
 
     try {
-        // 🔥 CONFIGURAR OAUTH2 BIEN
+
         const oAuth2Client = new google.auth.OAuth2(
             process.env.GOOGLE_CLIENT_ID,
             process.env.GOOGLE_CLIENT_SECRET,
@@ -81,61 +83,57 @@ app.post("/send", async (req, res) => {
             refresh_token: req.user.refreshToken
         });
 
-        const accessToken = await oAuth2Client.getAccessToken();
+        const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
 
-        // 🔥 TRANSPORTER CORRECTO
-        const transporter = nodemailer.createTransport({
-            service: "gmail",
-            auth: {
-                type: "OAuth2",
-                user: req.user.profile.emails[0].value,
-                clientId: process.env.GOOGLE_CLIENT_ID,
-                clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-                refreshToken: req.user.refreshToken,
-                accessToken: accessToken.token
-            }
-        });
+        const mensaje = `
+From: ${req.user.profile.emails[0].value}
+To: formulariossolicitudes@gmail.com
+Subject: Nueva solicitud
 
-        const mailOptions = {
-            from: req.user.profile.emails[0].value, // 🔥 USUARIO QUE INICIÓ SESIÓN
-            to: "formulariossolicitudes@gmail.com",
-            replyTo: data.correo,
-            subject: "Nueva solicitud",
-            text: `
-                📌 DATOS PERSONALES
-                Cédula: ${data.cedula}
-                Nombre: ${data.nombre}
-                Correo: ${data.correo}
-                Celular: ${data.celular}
+📌 DATOS PERSONALES
+Cédula: ${data.cedula}
+Nombre: ${data.nombre}
+Correo: ${data.correo}
+Celular: ${data.celular}
 
-                📍 PUNTO DE VENTA
-                Código: ${data.codigo_pv}
-                Nombre PV: ${data.nombre_pv}
+📍 PUNTO DE VENTA
+Código: ${data.codigo_pv}
+Nombre PV: ${data.nombre_pv}
 
-                🛠 TIPO
-                Locativo: ${data.locativo ? "Sí" : "No"}
-                Mobiliario: ${data.mobiliario ? "Sí" : "No"}
+🛠 TIPO
+Locativo: ${data.locativo ? "Sí" : "No"}
+Mobiliario: ${data.mobiliario ? "Sí" : "No"}
 
-                🔧 DETALLES
-                Locativo: ${data.locativo_opciones}
-                Mobiliario: ${data.mobiliario_opciones}
+🔧 DETALLES
+Locativo: ${data.locativo_opciones}
+Mobiliario: ${data.mobiliario_opciones}
 
-                📝 DESCRIPCIÓN
-                ${data.descripcion}
-                `
-        };
+📝 DESCRIPCIÓN
+${data.descripcion}
+        `;
 
-        // 🚀 RESPUESTA INMEDIATA (NO SE DEMORA)
+        const encodedMessage = Buffer.from(mensaje)
+            .toString("base64")
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=+$/, "");
+
+        // 🚀 RESPUESTA RÁPIDA
         res.send("Solicitud enviada correctamente ✅");
 
-        // 🔥 ENVÍO EN SEGUNDO PLANO
-        transporter.sendMail(mailOptions)
-            .then(info => console.log("📩 Enviado:", info.response))
+        // 🔥 ENVÍO REAL EN SEGUNDO PLANO
+        gmail.users.messages.send({
+            userId: "me",
+            requestBody: {
+                raw: encodedMessage
+            }
+        })
+            .then(() => console.log("📩 CORREO ENVIADO CORRECTAMENTE"))
             .catch(err => console.error("❌ ERROR REAL:", err));
 
     } catch (error) {
         console.error("❌ ERROR GENERAL:", error);
-        res.status(500).send("Error al enviar correo: " + error.message);
+        res.status(500).send("Error al enviar correo");
     }
 });
 
