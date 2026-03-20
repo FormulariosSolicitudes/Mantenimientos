@@ -87,11 +87,12 @@ app.get("/auth/google/callback",
 // 📩 ENVÍO DE CORREO CON GMAIL API
 app.post("/send", async (req, res) => {
 
+    console.log("BODY RECIBIDO:", req.body); // 🔥 AGREGA ESTO
+
     if (!req.user) {
         return res.status(401).send("Debes iniciar sesión con Google");
     }
 
-    // 🔥 USAR refreshToken DE SESIÓN (más seguro)
     const refreshToken = req.session.refreshToken;
 
     if (!refreshToken) {
@@ -115,50 +116,53 @@ app.post("/send", async (req, res) => {
         const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
 
         const mensaje = [
-                `From: ${req.user.profile.emails[0].value}`,
-                `To: formulariossolicitudes@gmail.com`,
-                `Subject: Mantenimiento`,
-                `Content-Type: text/plain; charset="UTF-8"`,
+            `From: ${req.user.profile.emails[0].value}`,
+            `To: formulariossolicitudes@gmail.com`,
+            `Subject: Mantenimiento`,
+            `MIME-Version: 1.0`,
+            `Content-Type: text/plain; charset="UTF-8"`,
 
-                `====================================================`,
-                `            📩 NUEVA SOLICITUD DE MANTENIMIENTO`,
-                `====================================================`,
+            ``,
 
-                `📌 DATOS PERSONALES`,
-                `----------------------------------------------------`,
-                `Cédula     : ${data.cedula}`,
-                `Nombre     : ${data.nombre}`,
-                `Correo     : ${data.correo}`,
-                `Celular    : ${data.celular}`,
+            `====================================================`,
+            `            📩 NUEVA SOLICITUD DE MANTENIMIENTO`,
+            `====================================================`,
 
-                ``,
-                `📍 PUNTO DE VENTA`,
-                `----------------------------------------------------`,
-                `Código PV  : ${data.codigo_pv}`,
-                `Nombre PV  : ${data.nombre_pv}`,
+            `📌 DATOS PERSONALES`,
+            `----------------------------------------------------`,
+            `Cédula     : ${data.cedula || ""}`,
+            `Nombre     : ${data.nombre || ""}`,
+            `Correo     : ${data.correo || ""}`,
+            `Celular    : ${data.celular || ""}`,
 
-                ``,
-                `🛠 TIPO DE SOLICITUD`,
-                `----------------------------------------------------`,
-                `Locativo   : ${data.locativo ? "Sí" : "No"}`,
-                `Mobiliario : ${data.mobiliario ? "Sí" : "No"}`,
+            ``,
+            `📍 PUNTO DE VENTA`,
+            `----------------------------------------------------`,
+            `Código PV  : ${data.codigo_pv || ""}`,
+            `Nombre PV  : ${data.nombre_pv || ""}`,
 
-                ``,
-                `🔧 DETALLES`,
-                `----------------------------------------------------`,
-                `Locativo   : ${data.locativo_opciones || "N/A"}`,
-                `Mobiliario : ${data.mobiliario_opciones || "N/A"}`,
+            ``,
+            `🛠 TIPO DE SOLICITUD`,
+            `----------------------------------------------------`,
+            `Locativo   : ${data.locativo ? "Sí" : "No"}`,
+            `Mobiliario : ${data.mobiliario ? "Sí" : "No"}`,
 
-                ``,
-                `📝 DESCRIPCIÓN`,
-                `----------------------------------------------------`,
-                `${data.descripcion}`,
+            ``,
+            `🔧 DETALLES`,
+            `----------------------------------------------------`,
+            `Locativo   : ${data.locativo_opciones || "N/A"}`,
+            `Mobiliario : ${data.mobiliario_opciones || "N/A"}`,
 
-                ``,
-                `====================================================`,
-                `Sistema automático de solicitudes`,
-                `====================================================`
-                ].join("\n");
+            ``,
+            `📝 DESCRIPCIÓN`,
+            `----------------------------------------------------`,
+            `${data.descripcion || ""}`,
+
+            ``,
+            `====================================================`,
+            `Sistema automático de solicitudes`,
+            `====================================================`
+        ].join("\n");
 
         const encodedMessage = Buffer.from(mensaje)
             .toString("base64")
@@ -166,7 +170,21 @@ app.post("/send", async (req, res) => {
             .replace(/\//g, "_")
             .replace(/=+$/, "");
 
-        res.send("Solicitud enviada correctamente ✅");
+        try {
+            await gmail.users.messages.send({
+                userId: "me",
+                requestBody: {
+                    raw: encodedMessage
+                }
+            });
+
+            console.log("📩 CORREO ENVIADO CORRECTAMENTE");
+            res.send("Solicitud enviada correctamente ✅");
+
+        } catch (err) {
+            console.error("❌ ERROR REAL:", err);
+            res.status(500).send("Error enviando correo");
+        }
 
         gmail.users.messages.send({
             userId: "me",
