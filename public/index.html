@@ -281,7 +281,16 @@
         body: JSON.stringify(datos)
       });
 
-      alert(await res.text());
+      const texto = await res.text();
+
+      if (res.status === 401) {
+        alert("⚠️ Debes iniciar sesión con Google");
+      } else if (res.ok) {
+        alert("✅ " + texto);
+        document.getElementById("miFormulario").reset();
+      } else {
+        alert("❌ " + texto);
+      }
     });
   </script>
 
