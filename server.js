@@ -58,7 +58,6 @@ app.get("/me", (req, res) => {
     }
 });
 
-
 // ✅ LOGIN (FORZAR CONSENTIMIENTO SOLO LA PRIMERA VEZ)
 app.get("/auth/google",
     passport.authenticate("google", {
@@ -117,7 +116,6 @@ app.post("/send", async (req, res) => {
             `To: mantenimiento@record.com.co`,
             `Subject: Mantenimiento`,
             `Content-Type: text/plain; charset="UTF-8"`,
-
             ``,
             `Cédula: ${data.cedula}`,
             `Nombre: ${data.nombre}`,
