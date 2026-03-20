@@ -90,7 +90,7 @@ app.post("/send", async (req, res) => {
         return res.status(401).send("Debes iniciar sesión con Google");
     }
 
-    const refreshToken = req.session.refreshToken;
+    const refreshToken = req.user.refreshToken;
 
     if (!refreshToken) {
         return res.status(401).send("No hay refresh token. Vuelve a iniciar sesión con Google.");
@@ -112,8 +112,8 @@ app.post("/send", async (req, res) => {
         const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
 
         const mensaje = [
-            `From: ${req.user.profile.emails[0].value}`,  // Usamos el correo autenticado
-            `To: mantenimiento@record.com.co`,           // A quién se envía el correo
+            `From: ${req.user.profile.emails[0].value}`,
+            `To: mantenimiento@record.com.co`,
             `Subject: Mantenimiento`,
             `Content-Type: text/plain; charset="UTF-8"`,
             ``,
@@ -133,14 +133,14 @@ app.post("/send", async (req, res) => {
             .replace(/\//g, "_")
             .replace(/=+$/, "");
 
-        // ✅ esperar respuesta real de Gmail
-        await gmail.users.messages.send({
+        const response = await gmail.users.messages.send({
             userId: "me",
             requestBody: {
                 raw: encodedMessage
             }
         });
 
+        console.log("📩 RESPUESTA GMAIL:", response.data);
         console.log("📩 CORREO ENVIADO CORRECTAMENTE");
 
         return res.send("Solicitud enviada correctamente ✅");
