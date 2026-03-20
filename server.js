@@ -3,11 +3,12 @@ const session = require("express-session");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const nodemailer = require("nodemailer");
+const { google } = require("googleapis");
 require("dotenv").config();
 
 const app = express();
 
-// 🔥 IMPORTANTE PARA RENDER (SESIONES)
+// 🔥 IMPORTANTE PARA RENDER
 app.set("trust proxy", 1);
 
 app.use(express.json());
@@ -18,7 +19,7 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: true, // 🔥 obligatorio en Render (https)
+        secure: true,
         sameSite: "none"
     }
 }));
@@ -36,11 +37,9 @@ passport.use(new GoogleStrategy({
     callbackURL: "https://mantenimientos-jzmo.onrender.com/auth/google/callback"
 },
     (accessToken, refreshToken, profile, done) => {
-
         return done(null, {
             profile,
-            accessToken,
-            refreshToken // 🔥 CLAVE
+            refreshToken
         });
     }));
 
@@ -51,8 +50,8 @@ app.get("/auth/google",
             "email",
             "https://www.googleapis.com/auth/gmail.send"
         ],
-        accessType: "offline", // 🔥 NECESARIO
-        prompt: "consent"      // 🔥 NECESARIO
+        accessType: "offline",
+        prompt: "consent"
     })
 );
 
@@ -64,8 +63,6 @@ app.get("/auth/google/callback",
 // 📩 ENVÍO DE CORREO
 app.post("/send", async (req, res) => {
 
-    console.log("📩 Datos recibidos:", req.body);
-
     if (!req.user) {
         return res.status(401).send("Debes iniciar sesión con Google");
     }
@@ -73,7 +70,20 @@ app.post("/send", async (req, res) => {
     const data = req.body;
 
     try {
+        // 🔥 CONFIGURAR OAUTH2 BIEN
+        const oAuth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            "https://mantenimientos-jzmo.onrender.com/auth/google/callback"
+        );
 
+        oAuth2Client.setCredentials({
+            refresh_token: req.user.refreshToken
+        });
+
+        const accessToken = await oAuth2Client.getAccessToken();
+
+        // 🔥 TRANSPORTER CORRECTO
         const transporter = nodemailer.createTransport({
             service: "gmail",
             auth: {
@@ -81,49 +91,51 @@ app.post("/send", async (req, res) => {
                 user: req.user.profile.emails[0].value,
                 clientId: process.env.GOOGLE_CLIENT_ID,
                 clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-                refreshToken: req.user.refreshToken
+                refreshToken: req.user.refreshToken,
+                accessToken: accessToken.token
             }
         });
 
         const mailOptions = {
-            from: req.user.profile.emails[0].value,
+            from: req.user.profile.emails[0].value, // 🔥 USUARIO QUE INICIÓ SESIÓN
             to: "formulariossolicitudes@gmail.com",
-            replyTo: data.correo, // 🔥 clave para responder al asesor
+            replyTo: data.correo,
             subject: "Nueva solicitud",
             text: `
-                    📌 DATOS PERSONALES
-                    Cédula: ${data.cedula}
-                    Nombre: ${data.nombre}
-                    Correo: ${data.correo}
-                    Celular: ${data.celular}
+                📌 DATOS PERSONALES
+                Cédula: ${data.cedula}
+                Nombre: ${data.nombre}
+                Correo: ${data.correo}
+                Celular: ${data.celular}
 
-                    📍 PUNTO DE VENTA
-                    Código: ${data.codigo_pv}
-                    Nombre PV: ${data.nombre_pv}
+                📍 PUNTO DE VENTA
+                Código: ${data.codigo_pv}
+                Nombre PV: ${data.nombre_pv}
 
-                    🛠 TIPO
-                    Locativo: ${data.locativo ? "Sí" : "No"}
-                    Mobiliario: ${data.mobiliario ? "Sí" : "No"}
+                🛠 TIPO
+                Locativo: ${data.locativo ? "Sí" : "No"}
+                Mobiliario: ${data.mobiliario ? "Sí" : "No"}
 
-                    🔧 DETALLES
-                    Locativo: ${data.locativo_opciones}
-                    Mobiliario: ${data.mobiliario_opciones}
+                🔧 DETALLES
+                Locativo: ${data.locativo_opciones}
+                Mobiliario: ${data.mobiliario_opciones}
 
-                    📝 DESCRIPCIÓN
-                    ${data.descripcion}
-                    `
+                📝 DESCRIPCIÓN
+                ${data.descripcion}
+                `
         };
 
-        res.send("Solicitud recibida ✅");
+        // 🚀 RESPUESTA INMEDIATA (NO SE DEMORA)
+        res.send("Solicitud enviada correctamente ✅");
 
-        // enviar en segundo plano (no bloquea)
+        // 🔥 ENVÍO EN SEGUNDO PLANO
         transporter.sendMail(mailOptions)
-            .then(() => console.log("📩 Correo enviado"))
-            .catch(err => console.error("❌ Error correo:", err));
+            .then(info => console.log("📩 Enviado:", info.response))
+            .catch(err => console.error("❌ ERROR REAL:", err));
 
     } catch (error) {
-        console.error("❌ ERROR REAL:", error);
-        res.status(500).send("Error al enviar correo");
+        console.error("❌ ERROR GENERAL:", error);
+        res.status(500).send("Error al enviar correo: " + error.message);
     }
 });
 
