@@ -79,6 +79,7 @@ app.get("/auth/google/callback",
             req.session.refreshToken = req.user.refreshToken;
         }
 
+        console.log("Refresh token guardado en sesión:", req.session.refreshToken);
         res.redirect("/");
     }
 );
@@ -90,7 +91,7 @@ app.post("/send", async (req, res) => {
         return res.status(401).send("Debes iniciar sesión con Google");
     }
 
-    const refreshToken = req.user.refreshToken;
+    const refreshToken = req.session.refreshToken;
 
     if (!refreshToken) {
         return res.status(401).send("No hay refresh token. Vuelve a iniciar sesión con Google.");
@@ -119,12 +120,13 @@ app.post("/send", async (req, res) => {
             ``,
             `Cédula: ${data.cedula}`,
             `Nombre: ${data.nombre}`,
+            `Correo: ${data.correo}`,
             `Celular: ${data.celular}`,
             `Código PV: ${data.codigo_pv}`,
             `Nombre PV: ${data.nombre_pv}`,
             `Locativo: ${data.locativo_opciones || "N/A"}`,
-            `Mobiliario: ${data.mobiliario_opciones || "."}`,
-            `Descripción del caso: ${data.descripcion}`
+            `Mobiliario: ${data.mobiliario_opciones || "N/A"}`,
+            `Descripción: ${data.descripcion}`
         ].join("\n");
 
         const encodedMessage = Buffer.from(mensaje)
@@ -133,14 +135,14 @@ app.post("/send", async (req, res) => {
             .replace(/\//g, "_")
             .replace(/=+$/, "");
 
-        const response = await gmail.users.messages.send({
+        // ✅ esperar respuesta real de Gmail
+        await gmail.users.messages.send({
             userId: "me",
             requestBody: {
                 raw: encodedMessage
             }
         });
 
-        console.log("📩 RESPUESTA GMAIL:", response.data);
         console.log("📩 CORREO ENVIADO CORRECTAMENTE");
 
         return res.send("Solicitud enviada correctamente ✅");
