@@ -120,8 +120,9 @@
 
 <body>
 
-  <div class="login">
-    <a href="/auth/google">Iniciar sesión con Google</a>
+  <div class="login" id="loginBox">
+    <a href="/auth/google" id="loginBtn">Iniciar sesión con Google</a>
+    <p id="userInfo" style="display:none;"></p>
   </div>
 
   <h2 style="text-align:center;">Formulario de Solicitud</h2>
@@ -191,131 +192,155 @@
   </div>
 
   <script>
-  const locativo = document.getElementById("locativo");
-  const mobiliario = document.getElementById("mobiliario");
-  const textoSeleccion = document.getElementById("seleccionMostrada");
-  const form = document.getElementById("miFormulario");
-  const btn = form.querySelector("button");
+    const locativo = document.getElementById("locativo");
+    const mobiliario = document.getElementById("mobiliario");
+    const textoSeleccion = document.getElementById("seleccionMostrada");
+    const form = document.getElementById("miFormulario");
+    const btn = form.querySelector("button");
 
-  locativo.addEventListener("change", () => {
-    if (locativo.checked) {
-      abrirModal("modalLocativo");
-      mobiliario.checked = false;
-      mobiliario.disabled = true;
-    } else {
-      mobiliario.disabled = false;
-    }
-  });
-
-  mobiliario.addEventListener("change", () => {
-    if (mobiliario.checked) {
-      abrirModal("modalMobiliario");
-      locativo.checked = false;
-      locativo.disabled = true;
-    } else {
-      locativo.disabled = false;
-    }
-  });
-
-  function abrirModal(id) {
-    document.getElementById(id).style.display = "block";
-  }
-
-  function cerrarModal(id) {
-    document.getElementById(id).style.display = "none";
-  }
-
-  document.querySelectorAll("input[name='locativo_op']").forEach(el => {
-    el.addEventListener("change", () => {
-      cerrarModal("modalLocativo");
-      actualizarTexto();
+    locativo.addEventListener("change", () => {
+      if (locativo.checked) {
+        abrirModal("modalLocativo");
+        mobiliario.checked = false;
+        mobiliario.disabled = true;
+      } else {
+        mobiliario.disabled = false;
+      }
     });
-  });
 
-  document.querySelectorAll("input[name='mobiliario_op']").forEach(el => {
-    el.addEventListener("change", () => {
-      cerrarModal("modalMobiliario");
-      actualizarTexto();
+    mobiliario.addEventListener("change", () => {
+      if (mobiliario.checked) {
+        abrirModal("modalMobiliario");
+        locativo.checked = false;
+        locativo.disabled = true;
+      } else {
+        locativo.disabled = false;
+      }
     });
-  });
 
-  function actualizarTexto() {
-    const loc = [...document.querySelectorAll("input[name='locativo_op']:checked")]
-      .map(el => el.value);
+    function abrirModal(id) {
+      document.getElementById(id).style.display = "block";
+    }
 
-    const mob = [...document.querySelectorAll("input[name='mobiliario_op']:checked")]
-      .map(el => el.value);
+    function cerrarModal(id) {
+      document.getElementById(id).style.display = "none";
+    }
 
-    let texto = "";
-
-    if (loc.length) texto += "Locativo: " + loc.join(", ");
-    if (mob.length) texto += (texto ? " | " : "") + "Mobiliario: " + mob.join(", ");
-
-    textoSeleccion.textContent = texto || "No has seleccionado opciones";
-  }
-
-  // 🚀 ENVÍO OPTIMIZADO
-  form.addEventListener("submit", async function (e) {
-    e.preventDefault();
-
-    btn.disabled = true;
-    btn.textContent = "Enviando...";
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000); // 10 segundos
-
-    const locativoSeleccionado = [...document.querySelectorAll("input[name='locativo_op']:checked")];
-    const mobiliarioSeleccionado = [...document.querySelectorAll("input[name='mobiliario_op']:checked")];
-
-    const datos = {
-      cedula: document.getElementById("cedula").value,
-      nombre: document.getElementById("nombre").value,
-      correo: document.getElementById("correo").value,
-      codigo_pv: document.getElementById("codigo_pv").value,
-      nombre_pv: document.getElementById("nombre_pv").value,
-      celular: document.getElementById("celular").value,
-      descripcion: document.getElementById("descripcion").value,
-      locativo: document.getElementById("locativo").checked,
-      mobiliario: document.getElementById("mobiliario").checked,
-      locativo_opciones: locativoSeleccionado.map(el => el.value).join(", "),
-      mobiliario_opciones: mobiliarioSeleccionado.map(el => el.value).join(", ")
-    };
-
-    try {
-      const res = await fetch("/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(datos),
-        signal: controller.signal
+    document.querySelectorAll("input[name='locativo_op']").forEach(el => {
+      el.addEventListener("change", () => {
+        cerrarModal("modalLocativo");
+        actualizarTexto();
       });
+    });
 
-      const texto = await res.text();
+    document.querySelectorAll("input[name='mobiliario_op']").forEach(el => {
+      el.addEventListener("change", () => {
+        cerrarModal("modalMobiliario");
+        actualizarTexto();
+      });
+    });
 
-      if (res.status === 401) {
-        alert("⚠️ Debes iniciar sesión con Google");
-      } else if (res.ok) {
-        alert("✅ Enviado correctamente");
-        form.reset();
-        textoSeleccion.textContent = "No has seleccionado opciones";
-      } else {
-        alert("❌ " + texto);
-      }
+    function actualizarTexto() {
+      const loc = [...document.querySelectorAll("input[name='locativo_op']:checked")]
+        .map(el => el.value);
 
-    } catch (error) {
-      if (error.name === "AbortError") {
-        alert("⏱️ El servidor tardó demasiado, intenta otra vez");
-      } else {
-        alert("❌ Error de conexión");
-      }
-    } finally {
-      clearTimeout(timeout);
-      btn.disabled = false;
-      btn.textContent = "Enviar";
+      const mob = [...document.querySelectorAll("input[name='mobiliario_op']:checked")]
+        .map(el => el.value);
+
+      let texto = "";
+
+      if (loc.length) texto += "Locativo: " + loc.join(", ");
+      if (mob.length) texto += (texto ? " | " : "") + "Mobiliario: " + mob.join(", ");
+
+      textoSeleccion.textContent = texto || "No has seleccionado opciones";
     }
-  });
-</script>
+
+    // 🚀 ENVÍO OPTIMIZADO
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      btn.disabled = true;
+      btn.textContent = "Enviando...";
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10 segundos
+
+      const locativoSeleccionado = [...document.querySelectorAll("input[name='locativo_op']:checked")];
+      const mobiliarioSeleccionado = [...document.querySelectorAll("input[name='mobiliario_op']:checked")];
+
+      const datos = {
+        cedula: document.getElementById("cedula").value,
+        nombre: document.getElementById("nombre").value,
+        correo: document.getElementById("correo").value,
+        codigo_pv: document.getElementById("codigo_pv").value,
+        nombre_pv: document.getElementById("nombre_pv").value,
+        celular: document.getElementById("celular").value,
+        descripcion: document.getElementById("descripcion").value,
+        locativo: document.getElementById("locativo").checked,
+        mobiliario: document.getElementById("mobiliario").checked,
+        locativo_opciones: locativoSeleccionado.map(el => el.value).join(", "),
+        mobiliario_opciones: mobiliarioSeleccionado.map(el => el.value).join(", ")
+      };
+
+      try {
+        const res = await fetch("/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(datos),
+          signal: controller.signal
+        });
+
+        const texto = await res.text();
+
+        if (res.status === 401) {
+          alert("⚠️ Debes iniciar sesión con Google");
+        } else if (res.ok) {
+          alert("✅ Enviado correctamente");
+          form.reset();
+          textoSeleccion.textContent = "No has seleccionado opciones";
+        } else {
+          alert("❌ " + texto);
+        }
+
+      } catch (error) {
+        if (error.name === "AbortError") {
+          alert("⏱️ El servidor tardó demasiado, intenta otra vez");
+        } else {
+          alert("❌ Error de conexión");
+        }
+      } finally {
+        clearTimeout(timeout);
+        btn.disabled = false;
+        btn.textContent = "Enviar";
+      }
+    });
+
+    // 🔐 Verificar sesión al cargar la página
+    window.addEventListener("DOMContentLoaded", async () => {
+      try {
+        const res = await fetch("/me");
+        const data = await res.json();
+
+        const loginBox = document.getElementById("loginBox");
+        const loginBtn = document.getElementById("loginBtn");
+        const userInfo = document.getElementById("userInfo");
+
+        if (data.logged) {
+          // Ocultar botón
+          loginBtn.style.display = "none";
+
+          // Mostrar info del usuario
+          userInfo.style.display = "block";
+          userInfo.textContent = "Sesión iniciada como: " + data.email;
+        }
+
+      } catch (err) {
+        console.error("Error verificando sesión:", err);
+      }
+    });
+  </script>
 
 </body>
 

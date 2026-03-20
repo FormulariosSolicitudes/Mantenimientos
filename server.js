@@ -45,6 +45,18 @@ passport.use(new GoogleStrategy({
         });
     }));
 
+// 🔍 Verificar sesión
+app.get("/me", (req, res) => {
+    if (req.user) {
+        res.json({
+            logged: true,
+            email: req.user.profile.emails[0].value
+        });
+    } else {
+        res.json({ logged: false });
+    }
+});
+
 app.get("/auth/google",
     passport.authenticate("google", {
         scope: [
