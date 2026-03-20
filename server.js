@@ -38,10 +38,11 @@ passport.use(new GoogleStrategy({
     (accessToken, refreshToken, profile, done) => {
 
         console.log("👤 Usuario logueado:", profile.emails[0].value);
+        console.log("🔑 refreshToken:", refreshToken);
 
         return done(null, {
             profile,
-            refreshToken
+            refreshToken: refreshToken || null
         });
     }));
 
@@ -57,6 +58,8 @@ app.get("/me", (req, res) => {
     }
 });
 
+
+// ✅ LOGIN (FORZAR CONSENTIMIENTO SOLO LA PRIMERA VEZ)
 app.get("/auth/google",
     passport.authenticate("google", {
         scope: [
@@ -64,13 +67,21 @@ app.get("/auth/google",
             "email",
             "https://www.googleapis.com/auth/gmail.send"
         ],
-        accessType: "offline"
+        accessType: "offline",
+        prompt: "consent" // 🔥 CLAVE PARA OBTENER REFRESH TOKEN
     })
 );
 
 app.get("/auth/google/callback",
     passport.authenticate("google", { failureRedirect: "/" }),
-    (req, res) => res.redirect("/")
+    (req, res) => {
+        // Guardar refreshToken en sesión si existe
+        if (req.user && req.user.refreshToken) {
+            req.session.refreshToken = req.user.refreshToken;
+        }
+
+        res.redirect("/");
+    }
 );
 
 // 📩 ENVÍO DE CORREO CON GMAIL API
@@ -78,6 +89,13 @@ app.post("/send", async (req, res) => {
 
     if (!req.user) {
         return res.status(401).send("Debes iniciar sesión con Google");
+    }
+
+    // 🔥 USAR refreshToken DE SESIÓN (más seguro)
+    const refreshToken = req.session.refreshToken;
+
+    if (!refreshToken) {
+        return res.status(401).send("No hay refresh token. Vuelve a iniciar sesión con Google.");
     }
 
     const data = req.body;
@@ -91,7 +109,7 @@ app.post("/send", async (req, res) => {
         );
 
         oAuth2Client.setCredentials({
-            refresh_token: req.user.refreshToken
+            refresh_token: refreshToken
         });
 
         const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
@@ -140,10 +158,8 @@ app.post("/send", async (req, res) => {
             .replace(/\//g, "_")
             .replace(/=+$/, "");
 
-        // 🚀 RESPUESTA RÁPIDA
         res.send("Solicitud enviada correctamente ✅");
 
-        // 🔥 ENVÍO REAL EN SEGUNDO PLANO
         gmail.users.messages.send({
             userId: "me",
             requestBody: {
