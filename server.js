@@ -64,8 +64,7 @@ app.get("/auth/google",
             "email",
             "https://www.googleapis.com/auth/gmail.send"
         ],
-        accessType: "offline",
-        prompt: "consent"
+        accessType: "offline"
     })
 );
 
