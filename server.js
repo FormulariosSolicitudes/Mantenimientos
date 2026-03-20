@@ -112,14 +112,13 @@ app.post("/send", async (req, res) => {
         const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
 
         const mensaje = [
-            `From: ${req.user.profile.emails[0].value}`,
-            `To: mantenimiento@record.com.co`,
+            `From: ${req.user.profile.emails[0].value}`,  // Usamos el correo autenticado
+            `To: mantenimiento@record.com.co`,           // A quién se envía el correo
             `Subject: Mantenimiento`,
             `Content-Type: text/plain; charset="UTF-8"`,
             ``,
             `Cédula: ${data.cedula}`,
             `Nombre: ${data.nombre}`,
-            `Correo: ${data.correo}`,
             `Celular: ${data.celular}`,
             `Código PV: ${data.codigo_pv}`,
             `Nombre PV: ${data.nombre_pv}`,
