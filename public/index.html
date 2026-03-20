@@ -191,94 +191,104 @@
   </div>
 
   <script>
-    const locativo = document.getElementById("locativo");
-    const mobiliario = document.getElementById("mobiliario");
-    const textoSeleccion = document.getElementById("seleccionMostrada");
+  const locativo = document.getElementById("locativo");
+  const mobiliario = document.getElementById("mobiliario");
+  const textoSeleccion = document.getElementById("seleccionMostrada");
+  const form = document.getElementById("miFormulario");
+  const btn = form.querySelector("button");
 
-    locativo.addEventListener("change", () => {
-      if (locativo.checked) {
-        abrirModal("modalLocativo");
-        mobiliario.checked = false;
-        mobiliario.disabled = true;
-      } else {
-        mobiliario.disabled = false;
-      }
-    });
-
-    mobiliario.addEventListener("change", () => {
-      if (mobiliario.checked) {
-        abrirModal("modalMobiliario");
-        locativo.checked = false;
-        locativo.disabled = true;
-      } else {
-        locativo.disabled = false;
-      }
-    });
-
-    function abrirModal(id) {
-      document.getElementById(id).style.display = "block";
+  locativo.addEventListener("change", () => {
+    if (locativo.checked) {
+      abrirModal("modalLocativo");
+      mobiliario.checked = false;
+      mobiliario.disabled = true;
+    } else {
+      mobiliario.disabled = false;
     }
+  });
 
-    function cerrarModal(id) {
-      document.getElementById(id).style.display = "none";
+  mobiliario.addEventListener("change", () => {
+    if (mobiliario.checked) {
+      abrirModal("modalMobiliario");
+      locativo.checked = false;
+      locativo.disabled = true;
+    } else {
+      locativo.disabled = false;
     }
+  });
 
-    document.querySelectorAll("input[name='locativo_op']").forEach(el => {
-      el.addEventListener("change", () => {
-        cerrarModal("modalLocativo");
-        actualizarTexto();
-      });
+  function abrirModal(id) {
+    document.getElementById(id).style.display = "block";
+  }
+
+  function cerrarModal(id) {
+    document.getElementById(id).style.display = "none";
+  }
+
+  document.querySelectorAll("input[name='locativo_op']").forEach(el => {
+    el.addEventListener("change", () => {
+      cerrarModal("modalLocativo");
+      actualizarTexto();
     });
+  });
 
-    document.querySelectorAll("input[name='mobiliario_op']").forEach(el => {
-      el.addEventListener("change", () => {
-        cerrarModal("modalMobiliario");
-        actualizarTexto();
-      });
+  document.querySelectorAll("input[name='mobiliario_op']").forEach(el => {
+    el.addEventListener("change", () => {
+      cerrarModal("modalMobiliario");
+      actualizarTexto();
     });
+  });
 
-    function actualizarTexto() {
-      const loc = [...document.querySelectorAll("input[name='locativo_op']:checked")]
-        .map(el => el.value);
+  function actualizarTexto() {
+    const loc = [...document.querySelectorAll("input[name='locativo_op']:checked")]
+      .map(el => el.value);
 
-      const mob = [...document.querySelectorAll("input[name='mobiliario_op']:checked")]
-        .map(el => el.value);
+    const mob = [...document.querySelectorAll("input[name='mobiliario_op']:checked")]
+      .map(el => el.value);
 
-      let texto = "";
+    let texto = "";
 
-      if (loc.length) texto += "Locativo: " + loc.join(", ");
-      if (mob.length) texto += (texto ? " | " : "") + "Mobiliario: " + mob.join(", ");
+    if (loc.length) texto += "Locativo: " + loc.join(", ");
+    if (mob.length) texto += (texto ? " | " : "") + "Mobiliario: " + mob.join(", ");
 
-      textoSeleccion.textContent = texto || "No has seleccionado opciones";
-    }
+    textoSeleccion.textContent = texto || "No has seleccionado opciones";
+  }
 
-    // 🔥 ENVÍO REAL
-    document.getElementById("miFormulario").addEventListener("submit", async function (e) {
-      e.preventDefault();
+  // 🚀 ENVÍO OPTIMIZADO
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
 
-      const locativoSeleccionado = [...document.querySelectorAll("input[name='locativo_op']:checked")];
-      const mobiliarioSeleccionado = [...document.querySelectorAll("input[name='mobiliario_op']:checked")];
+    btn.disabled = true;
+    btn.textContent = "Enviando...";
 
-      const datos = {
-        cedula: document.getElementById("cedula").value,
-        nombre: document.getElementById("nombre").value,
-        correo: document.getElementById("correo").value,
-        codigo_pv: document.getElementById("codigo_pv").value,
-        nombre_pv: document.getElementById("nombre_pv").value,
-        celular: document.getElementById("celular").value,
-        descripcion: document.getElementById("descripcion").value,
-        locativo: document.getElementById("locativo").checked,
-        mobiliario: document.getElementById("mobiliario").checked,
-        locativo_opciones: locativoSeleccionado.map(el => el.value).join(", "),
-        mobiliario_opciones: mobiliarioSeleccionado.map(el => el.value).join(", ")
-      };
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000); // 10 segundos
 
+    const locativoSeleccionado = [...document.querySelectorAll("input[name='locativo_op']:checked")];
+    const mobiliarioSeleccionado = [...document.querySelectorAll("input[name='mobiliario_op']:checked")];
+
+    const datos = {
+      cedula: document.getElementById("cedula").value,
+      nombre: document.getElementById("nombre").value,
+      correo: document.getElementById("correo").value,
+      codigo_pv: document.getElementById("codigo_pv").value,
+      nombre_pv: document.getElementById("nombre_pv").value,
+      celular: document.getElementById("celular").value,
+      descripcion: document.getElementById("descripcion").value,
+      locativo: document.getElementById("locativo").checked,
+      mobiliario: document.getElementById("mobiliario").checked,
+      locativo_opciones: locativoSeleccionado.map(el => el.value).join(", "),
+      mobiliario_opciones: mobiliarioSeleccionado.map(el => el.value).join(", ")
+    };
+
+    try {
       const res = await fetch("/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(datos)
+        body: JSON.stringify(datos),
+        signal: controller.signal
       });
 
       const texto = await res.text();
@@ -286,13 +296,26 @@
       if (res.status === 401) {
         alert("⚠️ Debes iniciar sesión con Google");
       } else if (res.ok) {
-        alert("✅ " + texto);
-        document.getElementById("miFormulario").reset();
+        alert("✅ Enviado correctamente");
+        form.reset();
+        textoSeleccion.textContent = "No has seleccionado opciones";
       } else {
         alert("❌ " + texto);
       }
-    });
-  </script>
+
+    } catch (error) {
+      if (error.name === "AbortError") {
+        alert("⏱️ El servidor tardó demasiado, intenta otra vez");
+      } else {
+        alert("❌ Error de conexión");
+      }
+    } finally {
+      clearTimeout(timeout);
+      btn.disabled = false;
+      btn.textContent = "Enviar";
+    }
+  });
+</script>
 
 </body>
 

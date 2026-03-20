@@ -91,32 +91,35 @@ app.post("/send", async (req, res) => {
             replyTo: data.correo, // 🔥 clave para responder al asesor
             subject: "Nueva solicitud",
             text: `
-📌 DATOS PERSONALES
-Cédula: ${data.cedula}
-Nombre: ${data.nombre}
-Correo: ${data.correo}
-Celular: ${data.celular}
+                    📌 DATOS PERSONALES
+                    Cédula: ${data.cedula}
+                    Nombre: ${data.nombre}
+                    Correo: ${data.correo}
+                    Celular: ${data.celular}
 
-📍 PUNTO DE VENTA
-Código: ${data.codigo_pv}
-Nombre PV: ${data.nombre_pv}
+                    📍 PUNTO DE VENTA
+                    Código: ${data.codigo_pv}
+                    Nombre PV: ${data.nombre_pv}
 
-🛠 TIPO
-Locativo: ${data.locativo ? "Sí" : "No"}
-Mobiliario: ${data.mobiliario ? "Sí" : "No"}
+                    🛠 TIPO
+                    Locativo: ${data.locativo ? "Sí" : "No"}
+                    Mobiliario: ${data.mobiliario ? "Sí" : "No"}
 
-🔧 DETALLES
-Locativo: ${data.locativo_opciones}
-Mobiliario: ${data.mobiliario_opciones}
+                    🔧 DETALLES
+                    Locativo: ${data.locativo_opciones}
+                    Mobiliario: ${data.mobiliario_opciones}
 
-📝 DESCRIPCIÓN
-${data.descripcion}
-`
+                    📝 DESCRIPCIÓN
+                    ${data.descripcion}
+                    `
         };
 
-        await transporter.sendMail(mailOptions);
+        res.send("Solicitud recibida ✅");
 
-        res.send("Correo enviado correctamente ✅");
+        // enviar en segundo plano (no bloquea)
+        transporter.sendMail(mailOptions)
+            .then(() => console.log("📩 Correo enviado"))
+            .catch(err => console.error("❌ Error correo:", err));
 
     } catch (error) {
         console.error("❌ ERROR REAL:", error);
