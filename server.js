@@ -13,10 +13,12 @@ app.set("trust proxy", 1);
 app.use(express.json());
 app.use(express.static("public"));
 
+// 🔥 SESSION (ARREGLADO PARA RENDER)
 app.use(session({
     secret: "secreto",
     resave: false,
     saveUninitialized: false,
+    proxy: true,
     cookie: {
         secure: true,
         sameSite: "none"
@@ -58,15 +60,24 @@ passport.use(new OIDCStrategy({
     responseType: "code",
     responseMode: "query",
     redirectUrl: "https://mantenimientos-jzmo.onrender.com/auth/microsoft/callback",
-    scope: ["openid", "profile", "email"],
+    scope: [
+        "openid",
+        "profile",
+        "email",
+        "offline_access",
+        "https://graph.microsoft.com/Mail.Send"
+    ]
 },
     (iss, sub, profile, accessToken, refreshToken, done) => {
 
-        console.log("👤 Outlook:", profile._json.email || profile._json.preferred_username);
+        const email = profile._json.email || profile._json.preferred_username;
+
+        console.log("👤 Outlook:", email);
 
         return done(null, {
             provider: "microsoft",
-            email: profile._json.email || profile._json.preferred_username
+            email,
+            accessToken // 🔥 IMPORTANTE
         });
     }));
 
@@ -129,7 +140,7 @@ app.get("/me", (req, res) => {
 });
 
 /* =========================
-   📩 ENVÍO CORREO (GMAIL)
+   📩 ENVÍO CORREO
 ========================= */
 app.post("/send", async (req, res) => {
 
@@ -143,7 +154,7 @@ app.post("/send", async (req, res) => {
 
     try {
 
-        // 🔵 SI ES GOOGLE
+        // 🔵 GOOGLE
         if (req.user.provider === "google") {
 
             const oAuth2Client = new google.auth.OAuth2(
@@ -159,7 +170,7 @@ app.post("/send", async (req, res) => {
             const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
 
             const mensaje = [
-                `From: ${req.user.profile.emails[0].value}`,
+                `From: ${req.user.email}`,
                 `To: brayanmachado2015@gmail.com`,
                 `Subject: Mantenimiento`,
                 `Content-Type: text/plain; charset="UTF-8"`,
@@ -169,8 +180,8 @@ app.post("/send", async (req, res) => {
                 `Celular: ${data.celular}`,
                 `Código PV: ${data.codigo_pv}`,
                 `Nombre PV: ${data.nombre_pv}`,
-                `Locativo: ${data.locativo_opciones}`,
-                `Mobiliario: ${data.mobiliario_opciones}`,
+                `Locativo: ${data.locativo_opciones || "N/A"}`,
+                `Mobiliario: ${data.mobiliario_opciones || "N/A"}`,
                 `Descripción: ${data.descripcion}`
             ].join("\n");
 
@@ -189,15 +200,13 @@ app.post("/send", async (req, res) => {
             return res.send("Enviado con Gmail ✅");
         }
 
-        // 🟢 SI ES OUTLOOK
-        if (req.user.provider === "outlook") {
-
-            const accessToken = req.user.accessToken;
+        // 🟢 OUTLOOK
+        if (req.user.provider === "microsoft") {
 
             await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${accessToken}`,
+                    "Authorization": `Bearer ${req.user.accessToken}`,
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
@@ -206,7 +215,6 @@ app.post("/send", async (req, res) => {
                         body: {
                             contentType: "Text",
                             content:
-                                `Cédula: ${data.cedula}\n` +
                                 `Cédula: ${data.cedula}\n` +
                                 `Nombre: ${data.nombre}\n` +
                                 `Celular: ${data.celular}\n` +
@@ -237,5 +245,11 @@ app.post("/send", async (req, res) => {
     }
 });
 
+/* =========================
+   🚀 SERVER
+========================= */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Servidor en " + PORT));
+
+app.listen(PORT, () => {
+    console.log("Servidor corriendo en puerto " + PORT);
+});
