@@ -2,12 +2,12 @@ const express = require("express");
 const session = require("express-session");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const OIDCStrategy = require("passport-azure-ad").OIDCStrategy;
 const { google } = require("googleapis");
 require("dotenv").config();
 
 const app = express();
 
-// 🔥 IMPORTANTE PARA RENDER
 app.set("trust proxy", 1);
 
 app.use(express.json());
@@ -29,7 +29,9 @@ app.use(passport.session());
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
-// 🔐 GOOGLE LOGIN
+/* =========================
+   🔵 GOOGLE LOGIN
+========================= */
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -37,28 +39,42 @@ passport.use(new GoogleStrategy({
 },
     (accessToken, refreshToken, profile, done) => {
 
-        console.log("👤 Usuario logueado:", profile.emails[0].value);
-        console.log("🔑 refreshToken:", refreshToken);
+        console.log("👤 Google:", profile.emails[0].value);
 
         return done(null, {
-            profile,
+            provider: "google",
+            email: profile.emails[0].value,
             refreshToken: refreshToken || null
         });
     }));
 
-// 🔍 Verificar sesión
-app.get("/me", (req, res) => {
-    if (req.user) {
-        res.json({
-            logged: true,
-            email: req.user.profile.emails[0].value
-        });
-    } else {
-        res.json({ logged: false });
-    }
-});
+/* =========================
+   🟦 OUTLOOK LOGIN
+========================= */
+passport.use(new OIDCStrategy({
+    identityMetadata: "https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration",
+    clientID: process.env.MS_CLIENT_ID,
+    clientSecret: process.env.MS_CLIENT_SECRET,
+    responseType: "code",
+    responseMode: "query",
+    redirectUrl: "https://mantenimientos-jzmo.onrender.com/auth/microsoft/callback",
+    scope: ["openid", "profile", "email"],
+},
+    (iss, sub, profile, accessToken, refreshToken, done) => {
 
-// ✅ LOGIN (FORZAR CONSENTIMIENTO SOLO LA PRIMERA VEZ)
+        console.log("👤 Outlook:", profile._json.email || profile._json.preferred_username);
+
+        return done(null, {
+            provider: "microsoft",
+            email: profile._json.email || profile._json.preferred_username
+        });
+    }));
+
+/* =========================
+   🔐 LOGIN ROUTES
+========================= */
+
+// GOOGLE
 app.get("/auth/google",
     passport.authenticate("google", {
         scope: [
@@ -67,90 +83,153 @@ app.get("/auth/google",
             "https://www.googleapis.com/auth/gmail.send"
         ],
         accessType: "offline",
-        prompt: "consent" // 🔥 CLAVE PARA OBTENER REFRESH TOKEN
+        prompt: "consent"
     })
 );
 
 app.get("/auth/google/callback",
     passport.authenticate("google", { failureRedirect: "/" }),
     (req, res) => {
-        // Guardar refreshToken en sesión si existe
-        if (req.user && req.user.refreshToken) {
+
+        if (req.user.refreshToken) {
             req.session.refreshToken = req.user.refreshToken;
         }
 
-        console.log("Refresh token guardado en sesión:", req.session.refreshToken);
         res.redirect("/");
     }
 );
 
-// 📩 ENVÍO DE CORREO CON GMAIL API
+// OUTLOOK
+app.get("/auth/microsoft",
+    passport.authenticate("azuread-openidconnect")
+);
+
+app.get("/auth/microsoft/callback",
+    passport.authenticate("azuread-openidconnect", {
+        failureRedirect: "/"
+    }),
+    (req, res) => {
+        res.redirect("/");
+    }
+);
+
+/* =========================
+   🔍 SESIÓN
+========================= */
+app.get("/me", (req, res) => {
+    if (req.user) {
+        res.json({
+            logged: true,
+            email: req.user.email,
+            provider: req.user.provider
+        });
+    } else {
+        res.json({ logged: false });
+    }
+});
+
+/* =========================
+   📩 ENVÍO CORREO (GMAIL)
+========================= */
 app.post("/send", async (req, res) => {
 
     console.log("🔥 ENTRO A /send");
 
     if (!req.user) {
-        return res.status(401).send("Debes iniciar sesión con Google");
+        return res.status(401).send("Debes iniciar sesión");
     }
 
-    const refreshToken = req.session.refreshToken;
+    const data = req.body;
 
-    if (!refreshToken) {
-        return res.status(401).send("No hay refresh token. Vuelve a iniciar sesión con Google.");
-    }
-
-    // Verificar si el refreshToken es válido antes de continuar
     try {
-        const oAuth2Client = new google.auth.OAuth2(
-            process.env.GOOGLE_CLIENT_ID,
-            process.env.GOOGLE_CLIENT_SECRET,
-            "https://mantenimientos-jzmo.onrender.com/auth/google/callback"
-        );
 
-        oAuth2Client.setCredentials({
-            refresh_token: refreshToken
-        });
+        // 🔵 SI ES GOOGLE
+        if (req.user.provider === "google") {
 
-        // Intentar refrescar el token
-        await oAuth2Client.getAccessToken(); // Esto debería actualizar el token automáticamente
+            const oAuth2Client = new google.auth.OAuth2(
+                process.env.GOOGLE_CLIENT_ID,
+                process.env.GOOGLE_CLIENT_SECRET,
+                "https://mantenimientos-jzmo.onrender.com/auth/google/callback"
+            );
 
-        const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
+            oAuth2Client.setCredentials({
+                refresh_token: req.session.refreshToken
+            });
 
-        // Aquí sigues con el envío del correo
-        const data = req.body;
-        const mensaje = [
-            `From: ${req.user.profile.emails[0].value}`,
-            `To: mantenimiento@record.com.co`,
-            `Subject: Mantenimiento`,
-            `Content-Type: text/plain; charset="UTF-8"`,
-            ``,
-            `Cédula: ${data.cedula}`,
-            `Nombre: ${data.nombre}`,
-            `Celular: ${data.celular}`,
-            `Código PV: ${data.codigo_pv}`,
-            `Nombre PV: ${data.nombre_pv}`,
-            `Locativo: ${data.locativo_opciones || "N/A"}`,
-            `Mobiliario: ${data.mobiliario_opciones || "N/A"}`,
-            `Descripción: ${data.descripcion}`
-        ].join("\n");
+            const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
 
-        const encodedMessage = Buffer.from(mensaje)
-            .toString("base64")
-            .replace(/\+/g, "-")
-            .replace(/\//g, "_")
-            .replace(/=+$/, "");
+            const mensaje = [
+                `From: ${req.user.profile.emails[0].value}`,
+                `To: brayanmachado2015@gmail.com`,
+                `Subject: Mantenimiento`,
+                `Content-Type: text/plain; charset="UTF-8"`,
+                ``,
+                `Cédula: ${data.cedula}`,
+                `Nombre: ${data.nombre}`,
+                `Celular: ${data.celular}`,
+                `Código PV: ${data.codigo_pv}`,
+                `Nombre PV: ${data.nombre_pv}`,
+                `Locativo: ${data.locativo_opciones}`,
+                `Mobiliario: ${data.mobiliario_opciones}`,
+                `Descripción: ${data.descripcion}`
+            ].join("\n");
 
-        // ✅ esperar respuesta real de Gmail
-        await gmail.users.messages.send({
-            userId: "me",
-            requestBody: {
-                raw: encodedMessage
-            }
-        });
+            const encodedMessage = Buffer.from(mensaje)
+                .toString("base64")
+                .replace(/\+/g, "-")
+                .replace(/\//g, "_")
+                .replace(/=+$/, "");
 
-        console.log("📩 CORREO ENVIADO CORRECTAMENTE");
+            await gmail.users.messages.send({
+                userId: "me",
+                requestBody: { raw: encodedMessage }
+            });
 
-        return res.send("Solicitud enviada correctamente ✅");
+            console.log("📩 ENVIADO CON GMAIL");
+            return res.send("Enviado con Gmail ✅");
+        }
+
+        // 🟢 SI ES OUTLOOK
+        if (req.user.provider === "outlook") {
+
+            const accessToken = req.user.accessToken;
+
+            await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${accessToken}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    message: {
+                        subject: "Mantenimiento",
+                        body: {
+                            contentType: "Text",
+                            content:
+                                `Cédula: ${data.cedula}\n` +
+                                `Cédula: ${data.cedula}\n` +
+                                `Nombre: ${data.nombre}\n` +
+                                `Celular: ${data.celular}\n` +
+                                `Código PV: ${data.codigo_pv}\n` +
+                                `Nombre PV: ${data.nombre_pv}\n` +
+                                `Locativo: ${data.locativo_opciones}\n` +
+                                `Mobiliario: ${data.mobiliario_opciones}\n` +
+                                `Descripción: ${data.descripcion}`
+                        },
+                        toRecipients: [
+                            {
+                                emailAddress: {
+                                    address: "brayanmachado2015@gmail.com"
+                                }
+                            }
+                        ]
+                    }
+                })
+            });
+
+            console.log("📩 ENVIADO CON OUTLOOK");
+            return res.send("Enviado con Outlook ✅");
+        }
 
     } catch (error) {
         console.error("❌ ERROR:", error);
@@ -158,9 +237,5 @@ app.post("/send", async (req, res) => {
     }
 });
 
-// 🔥 PUERTO PARA RENDER
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log("Servidor corriendo en puerto " + PORT);
-});
+app.listen(PORT, () => console.log("Servidor en " + PORT));
