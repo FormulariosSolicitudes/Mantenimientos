@@ -144,7 +144,8 @@ app.get("/auth/microsoft/callback",
         req.session.user = {
             provider: req.user.provider,
             email: req.user.email,
-            accessToken: req.user.accessToken
+            accessToken: req.user.accessToken,
+            refreshToken: req.user.refreshToken
         };
 
         req.session.save(() => {
@@ -237,7 +238,7 @@ app.post("/send", async (req, res) => {
         // 🟢 OUTLOOK
         if (user.provider === "microsoft") {
 
-            await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
+            const response = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${user.accessToken}`,
@@ -248,15 +249,7 @@ app.post("/send", async (req, res) => {
                         subject: "Mantenimiento",
                         body: {
                             contentType: "Text",
-                            content:
-                                `Cédula: ${data.cedula}\n` +
-                                `Nombre: ${data.nombre}\n` +
-                                `Celular: ${data.celular}\n` +
-                                `Código PV: ${data.codigo_pv}\n` +
-                                `Nombre PV: ${data.nombre_pv}\n` +
-                                `Locativo: ${data.locativo_opciones}\n` +
-                                `Mobiliario: ${data.mobiliario_opciones}\n` +
-                                `Descripción: ${data.descripcion}`
+                            content: "Mensaje de prueba"
                         },
                         toRecipients: [
                             {
@@ -268,6 +261,11 @@ app.post("/send", async (req, res) => {
                     }
                 })
             });
+
+            const result = await response.text();
+
+            console.log("STATUS:", response.status);
+            console.log("RESPONSE:", result);
 
             console.log("📩 ENVIADO CON OUTLOOK");
             return res.send("Enviado con Outlook ✅");
