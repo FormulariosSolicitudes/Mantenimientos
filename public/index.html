@@ -496,6 +496,14 @@
     const form = document.getElementById("miFormulario");
     const btn = form.querySelector("button");
 
+    // 🔐 LOGIN UI (CORREGIDO)
+    const loginButtons = document.getElementById("loginButtons"); // contenedor de botones
+    const userInfo = document.getElementById("userInfo");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    // =========================
+    // MODALES
+    // =========================
     locativo.addEventListener("change", () => {
       if (locativo.checked) {
         abrirModal("modalLocativo");
@@ -524,6 +532,9 @@
       document.getElementById(id).style.display = "none";
     }
 
+    // =========================
+    // OPCIONES
+    // =========================
     document.querySelectorAll("input[name='locativo_op']").forEach(el => {
       el.addEventListener("change", () => {
         cerrarModal("modalLocativo");
@@ -553,7 +564,9 @@
       textoSeleccion.textContent = texto || "No has seleccionado opciones";
     }
 
-    // 🚀 ENVÍO OPTIMIZADO
+    // =========================
+    // ENVÍO
+    // =========================
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
 
@@ -561,7 +574,7 @@
       btn.textContent = "Enviando...";
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000); // 10 segundos
+      const timeout = setTimeout(() => controller.abort(), 10000);
 
       const locativoSeleccionado = [...document.querySelectorAll("input[name='locativo_op']:checked")];
       const mobiliarioSeleccionado = [...document.querySelectorAll("input[name='mobiliario_op']:checked")];
@@ -573,8 +586,8 @@
         nombre_pv: document.getElementById("nombre_pv").value,
         celular: document.getElementById("celular").value,
         descripcion: document.getElementById("descripcion").value,
-        locativo: document.getElementById("locativo").checked,
-        mobiliario: document.getElementById("mobiliario").checked,
+        locativo: locativo.checked,
+        mobiliario: mobiliario.checked,
         locativo_opciones: locativoSeleccionado.map(el => el.value).join(", "),
         mobiliario_opciones: mobiliarioSeleccionado.map(el => el.value).join(", ")
       };
@@ -582,11 +595,12 @@
       try {
         const res = await fetch("https://mantenimientos-jzmo.onrender.com/send", {
           method: "POST",
-          credentials: "include", // 🔥 OBLIGATORIO
+          credentials: "include",
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify(datos)
+          body: JSON.stringify(datos),
+          signal: controller.signal
         });
 
         const texto = await res.text();
@@ -614,32 +628,48 @@
       }
     });
 
-    // 🔐 Verificar sesión al cargar la página
+    // =========================
+    // 🔐 VERIFICAR SESIÓN (ARREGLADO)
+    // =========================
     window.addEventListener("DOMContentLoaded", async () => {
       try {
         const res = await fetch("https://mantenimientos-jzmo.onrender.com/me", {
           credentials: "include"
         });
-        
+
         const data = await res.json();
 
-        const loginBox = document.getElementById("loginBox");
-        const loginBtn = document.getElementById("loginBtn");
-        const userInfo = document.getElementById("userInfo");
-
         if (data.logged) {
-          // Ocultar botón de login
-          loginBtn.style.display = "none";
+          // 🔥 ocultar botones login
+          if (loginButtons) loginButtons.style.display = "none";
 
-          // Mostrar info del usuario
-          userInfo.style.display = "block";
-          userInfo.textContent = "Sesión iniciada como: " + data.email;
+          // 🔥 mostrar usuario
+          if (userInfo) {
+            userInfo.style.display = "block";
+            userInfo.textContent = "Sesión iniciada como: " + data.email + " (" + data.provider + ")";
+          }
+
+          // 🔥 mostrar logout
+          if (logoutBtn) logoutBtn.style.display = "inline-block";
         }
 
       } catch (err) {
         console.error("Error verificando sesión:", err);
       }
     });
+
+    // =========================
+    // 🔴 LOGOUT
+    // =========================
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", async () => {
+        await fetch("https://mantenimientos-jzmo.onrender.com/logout", {
+          credentials: "include"
+        });
+
+        location.reload();
+      });
+    }
   </script>
 
 </body>
