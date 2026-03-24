@@ -124,7 +124,12 @@ app.get("/auth/google/callback",
             req.session.refreshToken = req.user.refreshToken;
         }
 
-        res.redirect("/");
+        // 🔥 guardar usuario también
+        req.session.user = req.user;
+
+        req.session.save(() => {
+            res.redirect("/");
+        });
     }
 );
 
@@ -135,11 +140,16 @@ app.get("/auth/microsoft",
 
 app.get("/auth/microsoft/callback",
     passport.authenticate("azuread-openidconnect", {
-        failureRedirect: "/",
-        session: true
+        failureRedirect: "/"
     }),
     (req, res) => {
-        res.redirect("/");
+
+        // 🔥 FORZAR QUE SE GUARDE LA SESIÓN
+        req.session.user = req.user;
+
+        req.session.save(() => {
+            res.redirect("/");
+        });
     }
 );
 
@@ -168,8 +178,10 @@ app.post("/send", async (req, res) => {
     console.log("USER:", req.user);
     console.log("SESSION:", req.session);
 
-    if (!req.user) {
-        return res.status(401).send("Debes iniciar sesión");
+    const user = req.user || req.session.user;
+
+    if (!user) {
+        return res.status(401).send("Debes iniciar sesión con Google o Outlook");
     }
 
     const data = req.body;
@@ -177,7 +189,7 @@ app.post("/send", async (req, res) => {
     try {
 
         // 🔵 GOOGLE
-        if (req.user.provider === "google") {
+        if (user.provider === "google") {
 
             const oAuth2Client = new google.auth.OAuth2(
                 process.env.GOOGLE_CLIENT_ID,
@@ -223,7 +235,7 @@ app.post("/send", async (req, res) => {
         }
 
         // 🟢 OUTLOOK
-        if (req.user.provider === "microsoft") {
+        if (user.provider === "microsoft") {
 
             await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
                 method: "POST",
