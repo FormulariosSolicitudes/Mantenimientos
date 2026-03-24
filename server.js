@@ -54,30 +54,37 @@ passport.use(new GoogleStrategy({
    🟦 OUTLOOK LOGIN
 ========================= */
 passport.use(new OIDCStrategy({
-    identityMetadata: "https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration",
+    identityMetadata: "https://login.microsoftonline.com/consumers/v2.0/.well-known/openid-configuration",
     clientID: process.env.MS_CLIENT_ID,
     clientSecret: process.env.MS_CLIENT_SECRET,
     responseType: "code",
     responseMode: "query",
     redirectUrl: "https://mantenimientos-jzmo.onrender.com/auth/microsoft/callback",
+
+    allowHttpForRedirectUrl: true, // 🔥 IMPORTANTE
+
     scope: [
         "openid",
         "profile",
         "email",
         "offline_access",
         "https://graph.microsoft.com/Mail.Send"
-    ]
+    ],
+
+    passReqToCallback: false
 },
     (iss, sub, profile, accessToken, refreshToken, done) => {
 
-        const email = profile._json.email || profile._json.preferred_username;
+        const email =
+            profile._json?.email ||
+            profile._json?.preferred_username;
 
         console.log("👤 Outlook:", email);
 
         return done(null, {
             provider: "microsoft",
             email,
-            accessToken // 🔥 IMPORTANTE
+            accessToken
         });
     }));
 
