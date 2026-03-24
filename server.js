@@ -13,6 +13,13 @@ app.set("trust proxy", 1);
 app.use(express.json());
 app.use(express.static("public"));
 
+const cors = require("cors");
+
+app.use(cors({
+    origin: "https://mantenimientos-jzmo.onrender.com",
+    credentials: true
+}));
+
 // 🔥 SESSION (ARREGLADO PARA RENDER)
 app.use(session({
     name: "sessionId",

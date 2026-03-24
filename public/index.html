@@ -580,9 +580,9 @@
       };
 
       try {
-        const res = await fetch("/send", {
+        const res = await fetch("https://mantenimientos-jzmo.onrender.com/send", {
           method: "POST",
-          credentials: "include", // 🔥 ESTA LÍNEA ES CLAVE
+          credentials: "include", // 🔥 OBLIGATORIO
           headers: {
             "Content-Type": "application/json"
           },
@@ -617,9 +617,10 @@
     // 🔐 Verificar sesión al cargar la página
     window.addEventListener("DOMContentLoaded", async () => {
       try {
-        const res = await fetch("/me", {
+        const res = await fetch("https://mantenimientos-jzmo.onrender.com/me", {
           credentials: "include"
         });
+        
         const data = await res.json();
 
         const loginBox = document.getElementById("loginBox");
