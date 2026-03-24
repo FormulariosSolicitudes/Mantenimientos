@@ -29,7 +29,8 @@ app.use(session({
     proxy: true,
     cookie: {
         secure: true,
-        sameSite: "none"
+        sameSite: "none",
+        httpOnly: true
     }
 }));
 
@@ -142,10 +143,10 @@ app.get("/auth/microsoft/callback",
 
         // 🔥 FORZAR QUE SE GUARDE LA SESIÓN
         req.session.user = {
-            provider: req.user.provider,
+            provider: "microsoft",
             email: req.user.email,
-            accessToken: req.user.accessToken,
-            refreshToken: req.user.refreshToken
+            accessToken: req.user.accessToken || null,
+            refreshToken: req.user.refreshToken || null
         };
 
         req.session.save(() => {
@@ -158,11 +159,14 @@ app.get("/auth/microsoft/callback",
    🔍 SESIÓN
 ========================= */
 app.get("/me", (req, res) => {
-    if (req.user) {
+
+    const user = req.user || req.session.user;
+
+    if (user) {
         res.json({
             logged: true,
-            email: req.user.email,
-            provider: req.user.provider
+            email: user.email,
+            provider: user.provider
         });
     } else {
         res.json({ logged: false });
@@ -238,7 +242,7 @@ app.post("/send", async (req, res) => {
         // 🟢 OUTLOOK
         if (user.provider === "microsoft") {
 
-            const response = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
+            await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${user.accessToken}`,
@@ -249,7 +253,15 @@ app.post("/send", async (req, res) => {
                         subject: "Mantenimiento",
                         body: {
                             contentType: "Text",
-                            content: "Mensaje de prueba"
+                            content:
+                                `Cédula: ${data.cedula}\n` +
+                                `Nombre: ${data.nombre}\n` +
+                                `Celular: ${data.celular}\n` +
+                                `Código PV: ${data.codigo_pv}\n` +
+                                `Nombre PV: ${data.nombre_pv}\n` +
+                                `Locativo: ${data.locativo_opciones}\n` +
+                                `Mobiliario: ${data.mobiliario_opciones}\n` +
+                                `Descripción: ${data.descripcion}`
                         },
                         toRecipients: [
                             {
@@ -261,11 +273,6 @@ app.post("/send", async (req, res) => {
                     }
                 })
             });
-
-            const result = await response.text();
-
-            console.log("STATUS:", response.status);
-            console.log("RESPONSE:", result);
 
             console.log("📩 ENVIADO CON OUTLOOK");
             return res.send("Enviado con Outlook ✅");
