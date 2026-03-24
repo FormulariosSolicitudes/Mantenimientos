@@ -69,7 +69,7 @@ passport.use(new OIDCStrategy({
     responseMode: "query",
     redirectUrl: "https://mantenimientos-jzmo.onrender.com/auth/microsoft/callback",
 
-    allowHttpForRedirectUrl: true, // 🔥 IMPORTANTE
+    allowHttpForRedirectUrl: true,
     validateIssuer: false,
 
     scope: [
@@ -80,17 +80,13 @@ passport.use(new OIDCStrategy({
         "https://graph.microsoft.com/Mail.Send"
     ],
 
-    session: true,
-
-    passReqToCallback: false
+    session: true, // 🔥 ESTA LÍNEA ES LA CLAVE
 },
     (iss, sub, profile, accessToken, refreshToken, done) => {
 
         const email =
             profile._json?.email ||
             profile._json?.preferred_username;
-
-        console.log("👤 Outlook:", email);
 
         return done(null, {
             provider: "microsoft",
@@ -145,7 +141,11 @@ app.get("/auth/microsoft/callback",
     (req, res) => {
 
         // 🔥 FORZAR QUE SE GUARDE LA SESIÓN
-        req.session.user = req.user;
+        req.session.user = {
+            provider: req.user.provider,
+            email: req.user.email,
+            accessToken: req.user.accessToken
+        };
 
         req.session.save(() => {
             res.redirect("/");
@@ -204,7 +204,7 @@ app.post("/send", async (req, res) => {
             const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
 
             const mensaje = [
-                `From: ${req.user.email}`,
+                `From: ${user.email}`,
                 `To: brayanmachado2015@gmail.com`,
                 `Subject: Mantenimiento`,
                 `Content-Type: text/plain; charset="UTF-8"`,
@@ -240,7 +240,7 @@ app.post("/send", async (req, res) => {
             await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${req.user.accessToken}`,
+                    "Authorization": `Bearer ${user.accessToken}`,
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
