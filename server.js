@@ -73,6 +73,8 @@ passport.use(new OIDCStrategy({
         "https://graph.microsoft.com/Mail.Send"
     ],
 
+    session: true,
+
     passReqToCallback: false
 },
     (iss, sub, profile, accessToken, refreshToken, done) => {
