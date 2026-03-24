@@ -483,7 +483,7 @@
       </label>
 
       <label class="opcion-item">
-        <input type="checkbox" name="mobiliario_op" value="UPS"> UPS 
+        <input type="checkbox" name="mobiliario_op" value="UPS"> UPS
       </label>
       <!-- puedes dejar todas las demás igual -->
     </div>
@@ -582,13 +582,11 @@
       try {
         const res = await fetch("/send", {
           method: "POST",
-          credentials: "include",
+          credentials: "include", // 🔥 ESTA LÍNEA ES CLAVE
           headers: {
             "Content-Type": "application/json"
           },
-
-          body: JSON.stringify(datos),
-          signal: controller.signal
+          body: JSON.stringify(datos)
         });
 
         const texto = await res.text();
@@ -619,7 +617,9 @@
     // 🔐 Verificar sesión al cargar la página
     window.addEventListener("DOMContentLoaded", async () => {
       try {
-        const res = await fetch("/me");
+        const res = await fetch("/me", {
+          credentials: "include"
+        });
         const data = await res.json();
 
         const loginBox = document.getElementById("loginBox");

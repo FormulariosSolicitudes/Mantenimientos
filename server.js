@@ -155,6 +155,9 @@ app.post("/send", async (req, res) => {
 
     console.log("🔥 ENTRO A /send");
 
+    console.log("USER:", req.user);
+    console.log("SESSION:", req.session);
+
     if (!req.user) {
         return res.status(401).send("Debes iniciar sesión");
     }
