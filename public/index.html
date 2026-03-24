@@ -594,7 +594,7 @@
         const texto = await res.text();
 
         if (res.status === 401) {
-          alert("⚠️ Debes iniciar sesión con Google");
+          alert("⚠️ Debes iniciar sesión con Google o Outlook");
         } else if (res.ok) {
           alert("✅ Enviado correctamente");
           form.reset();

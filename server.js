@@ -15,6 +15,7 @@ app.use(express.static("public"));
 
 // 🔥 SESSION (ARREGLADO PARA RENDER)
 app.use(session({
+    name: "sessionId",
     secret: "secreto",
     resave: false,
     saveUninitialized: false,
@@ -54,7 +55,7 @@ passport.use(new GoogleStrategy({
    🟦 OUTLOOK LOGIN
 ========================= */
 passport.use(new OIDCStrategy({
-    identityMetadata: "https://login.microsoftonline.com/consumers/v2.0/.well-known/openid-configuration",
+    identityMetadata: "https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration",
     clientID: process.env.MS_CLIENT_ID,
     clientSecret: process.env.MS_CLIENT_SECRET,
     responseType: "code",
@@ -62,6 +63,7 @@ passport.use(new OIDCStrategy({
     redirectUrl: "https://mantenimientos-jzmo.onrender.com/auth/microsoft/callback",
 
     allowHttpForRedirectUrl: true, // 🔥 IMPORTANTE
+    validateIssuer: false,
 
     scope: [
         "openid",
