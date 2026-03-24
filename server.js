@@ -128,7 +128,8 @@ app.get("/auth/microsoft",
 
 app.get("/auth/microsoft/callback",
     passport.authenticate("azuread-openidconnect", {
-        failureRedirect: "/"
+        failureRedirect: "/",
+        session: true
     }),
     (req, res) => {
         res.redirect("/");
